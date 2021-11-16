@@ -8,19 +8,12 @@ description = `
 Pendulum
 `;
 
-characters = [];
-
-options = {};
+//characters = [];
+//options = {};
+//let nextBarDist;
 
 let bars;
-let nextBarDist;
-
-let player;
-let flyingTicks;
 let ceilingY;
-let targetCeilingY;
-
-let scr =  0.02;
 
 let once = true
 let grav = 0.4
@@ -34,9 +27,14 @@ let mg
 
 function update() {
   if (!ticks) {
+	// 繩索
 	bars = [{ x: 50, length: 50, angle: PI / 2, angleVel: 0.03, isHeld: true }];
-	nextBarDist = 0
-    player = {
+    
+	// 天花板
+	ceilingY = 10;	 
+	
+	// player
+	player = {
       pos: vec(),
       length: 10,
       angle: 0,
@@ -45,113 +43,18 @@ function update() {
       bar: bars[0],
       vel: vec(),
     };
-    flyingTicks = 0;
-    ceilingY = targetCeilingY = 10;	 
   }
 
   color("light_cyan");
   rect(0, 0, 100, ceilingY);
-  color("light_blue");
-  rect(0, 90, 100, 10);
-
-
-
-  player.pos.x -= scr;
-  if (player.bar != null) {
-    const b = player.bar;
-	
-	
-    //player.pos.set(b.x, ceilingY).addWithAngle(b.angle, b.length);
-	
-	//player.pos.set(b.x, ceilingY).addWithAngle(b.angle+PI/2, b.length);
-	//vec(0, b.length).rotate(b.angle).add(b.x, ceilingY)
-	
-	player.pos = vec(0, b.length).rotate(b.angle).add(b.x, ceilingY)
-	
-    player.angleVel += b.angleVel * b.length * 0.003;
-    if (b.x < 0) {
-      color("red");
-      text("X", 3, ceilingY);
-      play("explosion");
-      end();
-    }
-    if (input.isJustPressed) {
-      play("select");
-      player.vel
-        .set()
-        .addWithAngle(
-          b.angle + PI / 2,
-          (b.angleVel * b.length + player.angleVel * 3) * sqrt(difficulty)
-        )
-        .add(0, -sqrt(difficulty) * 0.5);
-      player.bar = undefined;
-      flyingTicks = 1;
-    }
-  } else {
-    flyingTicks += difficulty;
-    player.pos.add(player.vel);
-    player.vel.y += (input.isPressed ? 0.01 : 0.1) * sqrt(difficulty);
-    player.vel.mul(input.isPressed ? 0.99 : 0.95);
-    if (player.pos.y > 89) {
-      play("hit");
-      player.vel.y *= -1.5;
-      player.pos.y = 88;
-      targetCeilingY += 10;
-      flyingTicks = -9999;
-      bars.forEach((b) => {
-        b.isHeld = false;
-      });
-    }
-    if (player.pos.x < 0) {
-      color("red");
-      text("X", 3, player.pos.y);
-      play("explosion");
-      end();
-    }
-  }  
   
-  
-  
-  player.angleVel *= 0.99;
-  player.angle += player.angleVel;
-  color("cyan");
-  if (
-    bar(player.pos, player.length, 4, player.angle, player.center).isColliding
-      .rect.light_cyan &&
-    player.vel.y < 0
-  ) {
-    player.vel.y *= -0.5;
-  }
-  
-  
-  
-  
-  if (nextBarDist < 0) {
-    const length = rnd(20, 50);
-    bars.push({
-      x: 50,
-      length,
-      angle: PI / 2 - rnd(PI / 4),
-      angleVel: rnds(0.02, 0.04),
-      isHeld: false,
-    });
-    nextBarDist = length + rnd(20);
-  }
-  
-  
-  // length: 50, angle: PI / 2, angleVel: 0.03
-  
-  
+    
   
   remove(bars, (b) => {
-    b.x -= scr;
-
-    //b.angleVel += cos(b.angle) * b.length * 0.00005 * sqrt(difficulty);
-	//b.angleVel += vel
-
 	
   //*********************************
-  // 鐘擺公式： https://www.khanacademy.org/science/high-school-physics/simple-harmonic-motion/simple-pendulums/a/simple-pendulum-ap1
+  // 鐘擺公式： 
+  // https://www.khanacademy.org/science/high-school-physics/simple-harmonic-motion/simple-pendulums/a/simple-pendulum-ap1
   // 
   // F = -m * g * sin(angle)
   //
@@ -175,31 +78,58 @@ function update() {
 	b.angle = ang				// 備用
     color("black");
 	
-	//const p = vec(0,0).addWithAngle(b.angle+a90, b.length).add(b.x, ceilingY);
 	
-	// 實際畫出線段
+	// 計算繩索末端位置
 	const p = vec(0, rope).rotate(ang).add(cen)
 	
 	
+	//****************************
+	// 計算 player 拉著繩索的位置
+	// (即繩索末端位置)
+	//****************************
+	player.pos = p
+	
+	// 身體搖擺
+	player.angleVel += b.angleVel * b.length * 0.003;
+	player.angleVel *= 0.9;
+	player.angle += player.angleVel;
+	
+
+
+	
+	//****************************
+	// Drawing
+	//****************************
+	// 繩索
     line(b.x, ceilingY, p);
-    color(b.isHeld ? "black" : "blue");
-    const c = box(p, 5).isColliding.rect;
-    if (c.light_blue) {
-      play("explosion");
-      color("red");
-      text("X", p);
-      end();
-    }
-    if (!b.isHeld && player.bar == null && c.cyan) {
-      play("powerUp");
-      if (flyingTicks > 0) {
-        addScore(ceil(flyingTicks), p);
-      }
-      player.bar = b;
-      b.isHeld = true;
-      targetCeilingY = clamp(targetCeilingY - 5, 10, 99);
-    }
-    return b.x < -30;
+    
+	// 繩索末端
+	box(p, 5)
+	
+	// Player
+	color("cyan")
+	bar(player.pos, player.length, 4, player.angle, player.center)
+	
+	
+	
+	
+	//***********************************************
+	// rotate 與 addWithAngle 均是順時針計算
+	//***********************************************
+	// var a45 = PI/4
+	// var a90 = PI/2
+	// var c2 = vec(40,10)
+	
+	// (1)
+	//var t = vec(0,40).rotate(a45).add(c2)
+	//line(40, 10, t)
+	
+	// (2)
+	// addWithAngle 是順時針計算
+	//var u = vec(0,0).addWithAngle(a90+a45, 40).add(c2)
+	//line(40, 10, u)
+	
+
   });
   
   
